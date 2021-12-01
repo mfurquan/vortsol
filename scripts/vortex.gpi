@@ -1,0 +1,9 @@
+dir = '../examples/fixed_cyl/run/'
+num = sprintf("%03i",i)
+vortexname = dir.'vortex'.num.'.dat'
+contourname = dir.'cylshape.dat'
+
+set palette defined (0 "blue", 0.5 "white", 1 "red")
+p contourname u 1:2 w l lc "black" notitle,\
+vortexname u 1:2:($3<0?6:7) w p pt 7 ps 0.5 lc variable notitle
+#vortexname u 1:2:3 w p pt 7 ps 0.5 lc palette
