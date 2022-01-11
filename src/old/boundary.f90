@@ -1,15 +1,15 @@
-module contours
-  use iso_fortran_env, only: rp => REAL64
+module boundary
+  use global_param
   use vectors
   implicit none
 
   integer      ,private,save :: buff
   real(kind=rp),private,save :: h
 
-  type :: contour
+  type :: solid_bndry
     integer ::                                                   &
-      n_pts = 0            ,& ! no. of points in the contours
-      n_mem = 0               ! max. no. of points w/o reallocation
+      n_pts = 0            ,& ! no. of boundary nodes
+      n_mem = 0               ! max. no. of nodes w/o reallocation
     
     type(vector) ,allocatable ::                                 &
       r(:)                 ,& ! nodal points
@@ -25,7 +25,7 @@ module contours
     generic   :: set => set_via_array, set_via_func
 !   procedure :: move_contour
     procedure :: shapeout
-  end type contour
+  end type solid_bndry
 
 contains
   subroutine set_via_func(this,contr,n_pts,u_max,dn,buffer)
@@ -118,4 +118,4 @@ contains
     write(10,*) this%r(1)
     close(10)
   end subroutine shapeout
-end module contours
+end module boundary

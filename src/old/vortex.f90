@@ -1,12 +1,9 @@
 module vortex
-  use iso_fortran_env, only: rp => REAL64
+  use global_param
   use vectors
   use contours
   use lapack95, only: gesv
   implicit none
-
-  integer      ,parameter :: n_sd = 2
-  real(kind=rp),parameter :: pi = acos(-1._rp)
 
   type :: vortexList
     integer                                :: maxnum, num = 0
