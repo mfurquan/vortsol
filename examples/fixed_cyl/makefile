@@ -16,7 +16,7 @@ ifeq ($(FC),gfortran)
 	FFLAGS = -I$(F95ROOT)/include/intel64/lp64 -m64 \
 		 -I"${MKLROOT}/include" -ffree-line-length-0 \
 		 -finit-real=nan -fcheck=all -fcheck=bounds \
-		 -g -O0 -Wall -Wconversion -fimplicit-none -fbacktrace
+		 -g -Og -Wall -Wconversion -fimplicit-none -fbacktrace
 #		 -Ofast
 
 # Dynamic linking
@@ -41,7 +41,8 @@ endif
 ifeq ($(FC),ifort)
 	FFLAGS = -I$(MKLROOT)/include/intel64/lp64 \
 		 -I"${MKLROOT}/include" \
-		 -g -warn all -check all -traceback -CB -debug all
+		 -g -warn all -check all -traceback -CB \
+		 -fpe0 -debug all
 #		 -init=snan -O2
 
 # Dynamic linking
@@ -63,27 +64,39 @@ ifeq ($(FC),ifort)
 #		 -O3
 endif
 
-$(EXE) : $(OBJDIR)/vectors.o $(OBJDIR)/contours.o \
-	$(OBJDIR)/vortex.o $(OBJDIR)/$(EXAMPLE).o
-	$(LD) -o $(EXE) $(OBJDIR)/vectors.o $(OBJDIR)/contours.o \
-		$(OBJDIR)/vortex.o $(OBJDIR)/$(EXAMPLE).o $(LFLAGS)
+$(EXE) : $(OBJDIR)/global_param.o $(OBJDIR)/utility.o \
+	$(OBJDIR)/flow_elements.o $(OBJDIR)/solid_boundary.o \
+	$(OBJDIR)/flow.o $(OBJDIR)/$(EXAMPLE).o
+	$(LD) -o $(EXE) $(OBJDIR)/global_param.o \
+		$(OBJDIR)/utility.o $(OBJDIR)/flow_elements.o \
+		$(OBJDIR)/solid_boundary.o $(OBJDIR)/flow.o \
+		$(OBJDIR)/$(EXAMPLE).o $(LFLAGS)
 
-#$(MODDIR)/lapack95.mod : $(MKLROOT)/include/lapack.f90
-#	$(FC) -fsyntax-only $< $(FFLAGS)
+$(MODDIR)/lapack95.mod : $(MKLROOT)/include/lapack.f90
+	$(FC) -fsyntax-only $< $(FFLAGS)
 
-$(OBJDIR)/vectors.o $(MODDIR)/vectors.mod : $(SRCDIR)/vectors.f90
-	$(FC) -c -o $(OBJDIR)/vectors.o $< $(FFLAGS)
+$(OBJDIR)/global_param.o $(MODDIR)/global_param.mod : $(SRCDIR)/global_param.f90
+	$(FC) -c -o $(OBJDIR)/global_param.o $< $(FFLAGS)
 
-$(OBJDIR)/contours.o $(MODDIR)/contours.mod : \
-	$(SRCDIR)/contours.f90 $(MODDIR)/vectors.mod
-	$(FC) -c -o $(OBJDIR)/contours.o $< $(FFLAGS)
+$(OBJDIR)/utility.o $(MODDIR)/utility.mod : $(SRCDIR)/utility.f90 $(MODDIR)/global_param.mod
+	$(FC) -c -o $(OBJDIR)/utility.o $< $(FFLAGS)
 
-$(OBJDIR)/vortex.o $(MODDIR)/vortex.mod : $(SRCDIR)/vortex.f90 \
-	$(MODDIR)/vectors.mod $(MODDIR)/contours.mod #$(MODDIR)/lapack95.mod
-	$(FC) -c -o $(OBJDIR)/vortex.o $< $(FFLAGS)
+$(OBJDIR)/flow_elements.o $(MODDIR)/flow_elements.mod : $(SRCDIR)/flow_elements.f90 $(MODDIR)/flow_elements.mod
+	$(FC) -c -o $(OBJDIR)/flow_elements.o $< $(FFLAGS)
 
-$(OBJDIR)/$(EXAMPLE).o : $(EXAMPLE).f90 $(MODDIR)/vectors.mod \
-	$(MODDIR)/contours.mod $(MODDIR)/vortex.mod
+$(OBJDIR)/solid_boundary.o $(MODDIR)/solid_boundary.mod : \
+	$(SRCDIR)/solid_boundary.f90 $(MODDIR)/global_param.mod \
+	$(MODDIR)/utility.mod $(MODDIR)/flow_elements.mod
+	$(FC) -c -o $(OBJDIR)/solid_boundary.o $< $(FFLAGS)
+
+$(OBJDIR)/flow.o $(MODDIR)/flow.mod : $(SRCDIR)/flow.f90 \
+	$(MODDIR)/global_param.mod $(MODDIR)/utility.mod \
+	$(MODDIR)/solid_boundary.mod #$(MODDIR)/lapack95.mod
+	$(FC) -c -o $(OBJDIR)/flow.o $< $(FFLAGS)
+
+$(OBJDIR)/$(EXAMPLE).o : $(EXAMPLE).f90 $(MODDIR)/global_param.mod \
+	$(MODDIR)/utility.mod $(MODDIR)/solid_boundary.mod \
+	$(MODDIR)/flow.mod
 	$(FC) -c -o $(OBJDIR)/$(EXAMPLE).o $< $(FFLAGS)
 
 .PHONY:clean cleanall

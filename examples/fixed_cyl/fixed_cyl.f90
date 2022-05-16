@@ -1,55 +1,52 @@
 program fixed_cyl
-  use vectors
-  use contours
-  use vortex
+  use global_param
+  use solid_boundary
+  use flow
   implicit none
 
   integer           :: Ncn, Nvor, Nstep, istep
-  real(kind=rp)     :: h, Rey, dt
-  type(vector)      :: Uinfty
-  type(contour)     :: cyl
-  type(vortexList)  :: vor
+  real(kind=rp)     :: h, Rey, dt, Uinfty(n_sd)
+  type(boundary)    :: cyl
+  type(flow_field)  :: cyl_flow
   namelist /inputs/ Ncn, Nvor, Nstep, h, Rey, dt
 
   read(*,nml=inputs)
   Uinfty = [1._rp,0._rp]
 
-  call cyl%set(circle,Ncn,2._rp*pi,h)
+  call cyl%set(RESHAPE([(circle(istep*2._rp*pi/Ncn),             &
+               istep = 0,Ncn-1)],[n_sd,Ncn]),h)
   call cyl%shapeout('cylshape.dat')
-  call vor%init(Nvor,h/2._rp)
-  call vor%gen_shear(cyl,Uinfty)
-  call vor%write_vor('vortex',0)
-  call write_surfvel(0)
+  call cyl_flow%init(Nvor,h/2._rp)
 
   do istep = 1,Nstep
-    call vor%move(cyl,Uinfty,Rey,dt)
-    call vor%gen_shear(cyl,Uinfty)
-    call vor%write_vor('vortex',istep)
+    call cyl_flow%step(cyl,Uinfty,Rey,dt)
+    call cyl_flow%write_vor('vortex',istep)
     call write_surfvel(istep)
   end do
 
 contains
-  pure elemental function circle(theta)
+  pure function circle(theta)
     real(kind=rp),intent(in) :: theta
-    type(vector) :: circle
+    real(kind=rp)            :: circle(n_sd)
 
-    circle = [cos(theta),sin(theta)]
+    circle = 0.5_rp*[cos(theta),sin(theta)]
   end function circle
 
   subroutine write_surfvel(step)
     integer,intent(in) :: step
     character(len=7)   :: stamp
-    type(vector)       :: v(cyl%n_pts)
+    real(kind=rp)      :: v(n_sd,cyl%N)
     integer            :: i
 
-    v = vor%Vel(cyl%rc(1:cyl%n_pts),Uinfty)
+    v = cyl_flow%Vel(cyl%r_col(:,1:cyl%N),Uinfty,cyl)
     
     write(stamp,'(i3.3a4)') step,'.dat'
     open(10,file='vel_pol'//stamp)
     do i = 1,Ncn
-      write(10,*) (i-1)/(2._rp*pi), v(i).dot.cyl%n(i),           &
-                                    v(i).dot.cyl%t(i)
+      write(10,*) 2._rp*pi*(i-1)/Ncn, cyl% rej(v(:,i),i),        &
+                                      cyl%proj(v(:,i),i)
     end do
+    write(10,*) 2._rp*pi, cyl%rej(v(:,1),1),cyl%proj(v(:,1),1)
     close(10)
   end subroutine write_surfvel
 end program fixed_cyl

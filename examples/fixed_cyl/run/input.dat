@@ -1,8 +1,8 @@
 &inputs
-Ncn=10
-Nvor=50
-Nstep=10
+Ncn=50
+Nvor=500
+Nstep=20
 h=0.01
-Rey=1000.0
-dt=0.01
+Rey=100.0
+dt=0.005
 /

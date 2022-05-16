@@ -4,7 +4,7 @@ module global_param
 
   logical,parameter :: debugON = .TRUE.
 
-  integer,parameter :: rp = REAL64, n_sd = 2, buffer = 20
+  integer,parameter :: rp = REAL64, n_sd = 2, buffer = 0
 
   real(kind=rp),parameter :: pi = acos(-1._rp)
 end module global_param
