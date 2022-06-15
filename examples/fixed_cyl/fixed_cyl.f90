@@ -4,11 +4,11 @@ program fixed_cyl
   use flow
   implicit none
 
-  integer           :: Ncn, Nvor, Nstep, istep
+  integer           :: Ncn, Nvor, Nstep, istep, wfreq
   real(kind=rp)     :: h, Rey, dt, Uinfty(n_sd)
   type(boundary)    :: cyl
   type(flow_field)  :: cyl_flow
-  namelist /inputs/ Ncn, Nvor, Nstep, h, Rey, dt
+  namelist /inputs/ Ncn, Nvor, Nstep, wfreq, h, Rey, dt
 
   read(*,nml=inputs)
   Uinfty = [1._rp,0._rp]
@@ -16,12 +16,13 @@ program fixed_cyl
   call cyl%set(RESHAPE([(circle(istep*2._rp*pi/Ncn),             &
                istep = 0,Ncn-1)],[n_sd,Ncn]),h)
   call cyl%shapeout('cylshape.dat')
-  call cyl_flow%init(Nvor,h/2._rp)
+  call cyl_flow%init(Nvor,h/2._rp,1.2_rp,0.02_rp)
 
   do istep = 1,Nstep
-    call cyl_flow%step(cyl,Uinfty,Rey,dt)
-    call cyl_flow%write_vor('vortex',istep)
-    call write_surfvel(istep)
+    call cyl_flow%step(Uinfty,Rey,dt,cyl)
+    if(MOD(istep,wfreq)==0)                                      &
+      call cyl_flow%write_vor('vortex',istep/wfreq)
+!    call write_surfvel(istep)
   end do
 
 contains

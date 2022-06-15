@@ -41,8 +41,9 @@ endif
 ifeq ($(FC),ifort)
 	FFLAGS = -I$(MKLROOT)/include/intel64/lp64 \
 		 -I"${MKLROOT}/include" \
-		 -g -warn all -check all -traceback -CB \
-		 -fpe0 -debug all
+		 -init=snan -O2
+#		 -g -warn all -check all -traceback -CB \
+#		 -fpe0 -debug all
 #		 -init=snan -O2
 
 # Dynamic linking
@@ -60,7 +61,8 @@ ifeq ($(FC),ifort)
 		 ${MKLROOT}/lib/intel64/libmkl_sequential.a \
 		 ${MKLROOT}/lib/intel64/libmkl_core.a \
 		 -Wl,--end-group -lpthread -lm -ldl \
-		 -g -check all -warn all -traceback
+#		 -O2
+#		 -g -check all -warn all -traceback
 #		 -O3
 endif
 

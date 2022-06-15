@@ -1,0 +1,11 @@
+&inputs
+Nvor=10000
+delta=0.01
+Nstep=400
+wfreq=5
+Nr = 20
+R_rnk = 0.01
+Rey = 100.0
+dt = 0.01
+Rmax = 1.5
+/

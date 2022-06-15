@@ -7,7 +7,7 @@ module flow
 
   type :: flow_field
     integer :: N = 0, Nmax
-    real(kind=rp)             :: R2_rnk, c = 1.2_rp
+    real(kind=rp)             :: R2_rnk, c, epsmin
     real(kind=rp),allocatable :: Gama(:), r(:,:)
     logical      ,allocatable :: has_vortex(:)
 
@@ -22,11 +22,10 @@ module flow
   end type flow_field
 
 contains
-  pure subroutine init(ffield,Nvor,R_rnk,adjst_eps)
+  pure subroutine init(ffield,Nvor,R_rnk,adjst_eps,min_dist)
     class(flow_field),intent(inout) :: ffield
     integer          ,intent(in)    :: Nvor
-    real(kind=rp)    ,intent(in)    :: R_rnk
-    real(kind=rp)    ,intent(in),optional :: adjst_eps
+    real(kind=rp)    ,intent(in)    :: R_rnk, adjst_eps, min_dist
 
     ffield%Nmax = Nvor
     ALLOCATE(ffield%Gama(Nvor))
@@ -36,7 +35,8 @@ contains
     ffield%has_vortex = .FALSE.
 
     ffield%R2_rnk = R_rnk**2
-    if(PRESENT(adjst_eps)) ffield%c = adjst_eps
+    ffield%c      = adjst_eps
+    ffield%epsmin = min_dist
   end subroutine init
 
   pure function Vel(ffield,r,U,bndry)
@@ -57,9 +57,9 @@ contains
           Vel(:,i) = U
         end if
 
-        do j = 1,ffield%Nmax
-          if(ffield%has_vortex(j)) Vel(:,i) = Vel(:,i)            &
-                 + gama(j)*rkn_vortex(r(:,i),r_v(:,j),R2_rkn)
+        do j = 1,ffield%N
+          Vel(:,i) = Vel(:,i)                                     &
+                   + gama(j)*rkn_vortex(r(:,i),r_v(:,j),R2_rkn)
         end do
       end do
     end associate
@@ -90,19 +90,21 @@ contains
     end associate
   end subroutine enforce_vel
 
-  pure subroutine step(ffield,bndry,U,Re,dt)
-    class(flow_field),intent(inout) :: ffield
-    type (boundary)  ,intent(in)    :: bndry
-    real(kind=rp)    ,intent(in)    :: U(n_sd), Re, dt
-    integer                         :: i_vor
+  pure subroutine step(ffield,U,Re,dt,bndry)
+    class(flow_field),intent(inout)       :: ffield
+    real(kind=rp)    ,intent(in)          :: U(n_sd), Re, dt
+    type (boundary)  ,intent(in),optional :: bndry
+    integer                               :: i_vor
 
     do concurrent (i_vor = 1:ffield%N)
       call move(i_vor)
     end do
-    if(ffield%N + bndry%N > ffield%Nmax)                         &
-      call ffield%purge_vor(ffield%N + bndry%N - ffield%Nmax)
-    call ffield%enforce_vel(bndry,U)
-    call ffield%import_vor(bndry)
+    if(PRESENT(bndry)) then
+      if(ffield%N + bndry%N > ffield%Nmax)                       &
+        call ffield%purge_vor(ffield%N + bndry%N - ffield%Nmax)
+      call ffield%enforce_vel(bndry,U)
+      call ffield%import_vor(bndry)
+    end if
   contains
     pure subroutine move(i)
       integer,intent(in) :: i
@@ -111,17 +113,19 @@ contains
       integer            :: j
 
       eps = 1.e5
-      do concurrent (j = 1:ffield%Nmax,                           &
-                     j /= i .AND. ffield%has_vortex(j))
+      do concurrent (j = 1:ffield%N, j /= i)
         eps = MIN(mag2(ffield%r(:,i) - ffield%r(:,j)),eps)
       end do
-      eps = ffield%c * sqrt(eps)
+      eps = MAX(ffield%epsmin,ffield%c*sqrt(eps))
 
-      V_pot = bndry%Vel_src(ffield%r(:,i)) + U
-      I1    = 0._rp
-      I2    = 0._rp
-      do concurrent (j = 1:ffield%Nmax,                           &
-                     j /= i .AND. ffield%has_vortex(j))
+      if(PRESENT(bndry)) then
+        V_pot = bndry%Vel_src(ffield%r(:,i)) + U
+      else
+        V_pot = U
+      end if
+      I1 = 0._rp
+      I2 = 0._rp
+      do concurrent (j = 1:ffield%N, j /= i)
         dr    = ffield%r(:,i) - ffield%r(:,j)
         r     = NORM2(dr)
         V_pot = V_pot + rot90(dr)                                 &
@@ -139,17 +143,19 @@ contains
 
       I0 = 2._rp*pi*eps**2
       I3 = 0._rp
-      do concurrent (j = 1:bndry%N)
-        r = NORM2(ffield%r(:,i) - bndry%r_col(:,j))
-        tmp = exp(-r/eps)
-        I0  = I0 + eps*bndry%rej(bndry%r_col(:,j),j)              &
-                 * (r+eps)*tmp/r**2
-        I3  = I3 + bndry%ds(j)*tmp*rot90(bndry%e_s(:,j))
-      end do
+      if(PRESENT(bndry)) then
+        do concurrent (j = 1:bndry%N)
+          dr = ffield%r(:,i) - bndry%r_col(:,j)
+          r  = NORM2(dr)
+          tmp = exp(-r/eps)
+          I0  = I0 + eps*bndry%rej(dr,j)*(r+eps)*tmp/r**2
+          I3  = I3 + bndry%ds(j)*tmp*rot90(bndry%e_s(:,j))
+        end do
+      end if
       ffield%r(:,i) = ffield%r(:,i)                               &
                     + (dt/2._rp/pi)*V_pot                         &
                     + (dt/Re/I0)*I3                               &
-                    - (dt/Re/I1)*I2
+                    + (dt/Re/I1)*I2
     end subroutine move
   end subroutine step
 
@@ -196,8 +202,7 @@ contains
       open(unit=10,file=flname//'.dat')
     end if
               
-    do i = 1,ffield%Nmax
-      if(ffield%has_vortex(i))                                   &
+    do i = 1,ffield%N
         write(10,*) ffield%r(:,i),ffield%Gama(i)
     end do
     close(10)

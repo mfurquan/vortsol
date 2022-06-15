@@ -11,11 +11,7 @@ contains
     rkn_vortex = rot90(r_p - r_v)
     dr2        = mag2(rkn_vortex)
 
-    if(dr2 < R2_rkn) then
-      rkn_vortex = rkn_vortex/(2._rp*pi*R2_rkn)
-    else
-      rkn_vortex = rkn_vortex/(2._rp*pi*dr2)
-    end if
+    rkn_vortex = rkn_vortex/(2._rp*pi*MAX(dr2,R2_rkn))
   end function rkn_vortex
 
   ! velocity induced by a source sheet of unit strength
