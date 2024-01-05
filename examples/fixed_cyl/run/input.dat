@@ -1,0 +1,10 @@
+&inputs
+Ncn=400
+Nvor=50000
+Nstep=500
+wfreq=5
+Rcore=0.0075
+delta = 1.0e-5
+Rey=100.0
+dt=0.05
+/

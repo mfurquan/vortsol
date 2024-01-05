@@ -1,0 +1,16 @@
+N = 50
+dir = '../examples/flat_plate/run/'
+set size square
+set palette defined (0 "blue", 0.5 "white", 1 "red")
+
+set term gif size 600,600 animate delay 20 loop 0 optimize
+set output dir."vortices.gif"
+
+do for [i=1:N]{
+num = sprintf("%03i",i)
+vortexname = dir.'vortex'.num.'.dat'
+contourname = dir.'plate.dat'
+p[-2:10][-6:6] contourname u 1:2 w l lc "black" notitle,\
+vortexname u 1:2:($3<0?6:7) w p pt 7 ps 0.3 lc variable notitle
+#vortexname u 1:2:3 w p pt 7 ps 0.5 lc palette
+}

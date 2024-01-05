@@ -1,0 +1,9 @@
+&inputs
+Nvor=10000
+R=1.0
+Nstep=100
+wfreq=5
+R_rnk = 0.01
+Rey = 100000.0
+dt = 0.05
+/

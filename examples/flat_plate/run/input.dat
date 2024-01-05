@@ -1,0 +1,11 @@
+&inputs
+Ncn=401
+Nvor=10000
+Nstep=10
+wfreq=1
+Rcore = 0.0001
+delta=0.0001
+AR = 50.0
+Rey=1000.0
+dt=0.05
+/

@@ -1,0 +1,9 @@
+&inputs
+Ncn=1000
+Nvor=1
+R=1.0
+R_rnk = 1.e-3
+d=1.e-2
+Gama = 1.0
+theta = 0.87
+/

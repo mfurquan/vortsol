@@ -1,0 +1,15 @@
+N = 80
+dir = '../examples/oseen_lamb1/run/'
+set size square
+set palette defined (0 "blue", 0.5 "white", 1 "red")
+
+set term gif size 600,600 animate delay 20 loop 0 optimize
+set output dir."vortices.gif"
+
+do for [i=0:N]{
+num = sprintf("%03i",i)
+vortexname = dir.'vortex'.num.'.dat'
+unset border
+unset tics
+p[-1:1][-1:1] vortexname u 1:2:($3<0?6:7) w p pt 7 ps 0.1 lc variable notitle
+}
